@@ -1,0 +1,46 @@
+contract Token {
+  var owner: Address
+  var balances: [Address: Int]
+}
+
+Token :: (owner) {
+  public mutating func mint(destination: Address, value: Int) {
+    balances[destination] = balances[destination] + value
+  }
+
+  public mutating func transferFrom(origin: Address, destination: Address, amount: Int) -> Bool {
+    return processTransfer(origin, destination, amount)
+  }
+}
+
+Token :: caller <- (any) {
+  public mutating func transfer(destination: Address, amount: Int) -> Bool {
+    return processTransfer(caller, destination, amount)
+  }
+
+  public func getBalance() -> Int {
+    return balances[caller]
+  }
+
+  public func balanceOf(account: Address) -> Int {
+    return balances[account]
+  }
+
+  mutating func processTransfer(origin: Address, destination: Address, amount: Int) -> Bool {
+    if (balances[origin] < amount) {
+      return false
+    }
+
+    if (balances[origin] - amount > balances[origin]) {
+      return false
+    }
+
+    if (balances[destination] + amount < balances[destination]) {
+      return false
+    }
+
+    balances[origin] = balances[origin] - amount
+    balances[destination] = balances[destination] + amount
+    return true
+  }
+}
