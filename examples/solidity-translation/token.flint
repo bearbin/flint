@@ -1,6 +1,12 @@
 contract Token {
   var owner: Address
   var balances: [Address: Int]
+
+  var decimals: Int
+  var totalSupply: Int
+  
+  var Transfer: Event<Address, Address, Int> // from, to, value
+  var Approval: Event<Address, Address, Int> // owner, spender, value
 }
 
 Token :: (owner) {
@@ -14,16 +20,20 @@ Token :: (owner) {
 }
 
 Token :: caller <- (any) {
-  public mutating func transfer(destination: Address, amount: Int) -> Bool {
-    return processTransfer(caller, destination, amount)
+  public func totalSupply() -> Int {
+    return totalSupply
+  }
+
+  public func balanceOf(account: Address) -> Int {
+    return balances[account]
   }
 
   public func getBalance() -> Int {
     return balances[caller]
   }
 
-  public func balanceOf(account: Address) -> Int {
-    return balances[account]
+  public mutating func transfer(destination: Address, amount: Int) -> Bool {
+    return processTransfer(caller, destination, amount)
   }
 
   mutating func processTransfer(origin: Address, destination: Address, amount: Int) -> Bool {
@@ -39,8 +49,8 @@ Token :: caller <- (any) {
       return false
     }
 
-    balances[origin] = balances[origin] - amount
-    balances[destination] = balances[destination] + amount
+    balances[origin] -= amount
+    balances[destination] += amount
     return true
   }
 }
