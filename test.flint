@@ -1,15 +1,14 @@
 contract Test {
-  var a: [Int : [Address: Int]]
-  var b: [[Int]]
+  var dict: [Int : [Address: Int]]
 }
 
 Test :: (any) {
-  func foo(b: Address) -> Int {
-    return a[2][b]
+  public func get(a: Int, b: Address) -> Int {
+    return dict[a][b]
   }
 
-  func bar() -> Int {
-    return b[0][2]
+  public mutating func set(a: Int, b: Address, value: Int) {
+    dict[a][b] = value
   }
 }
 

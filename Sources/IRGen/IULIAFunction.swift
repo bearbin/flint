@@ -20,12 +20,15 @@ struct IULIAFunction {
   var contractStorage: ContractStorage
   var environment: Environment
 
+  let variablePool = VariablePool()
+  let memoryPool = MemoryPool()
+
   var name: String {
     return functionDeclaration.identifier.name
   }
 
   var parameterNames: [String] {
-    return functionDeclaration.explicitParameters.map({ render($0.identifier) })
+    return functionDeclaration.explicitParameters.map({ mangleIdentifierName($0.identifier.name) })
   }
 
   var parameterCanonicalTypes: [CanonicalType] {
@@ -130,77 +133,111 @@ struct IULIAFunction {
 extension IULIAFunction {
   func render(_ statement: AST.Statement) -> String {
     switch statement {
-    case .expression(let expression): return render(expression)
+    case .expression(let expression): return render(expression, targetVariable: "test")
     case .ifStatement(let ifStatement): return render(ifStatement)
     case .returnStatement(let returnStatement): return render(returnStatement)
     }
   }
 
-  func render(_ expression: Expression, asLValue: Bool = false) -> String {
+  func render(_ expression: Expression, asLValue: Bool = false, targetVariable: String) -> String {
     switch expression {
-    case .binaryExpression(let binaryExpression): return render(binaryExpression, asLValue: asLValue)
-    case .bracketedExpression(let expression): return render(expression)
-    case .functionCall(let functionCall): return render(functionCall)
-    case .identifier(let identifier): return render(identifier, asLValue: asLValue)
-    case .variableDeclaration(let variableDeclaration): return render(variableDeclaration)
-    case .literal(let literal): return render(literalToken: literal)
-    case .self(let `self`): return render(selfToken: self)
-    case .subscriptExpression(let subscriptExpression): return render(subscriptExpression, asLValue: asLValue)
+    case .binaryExpression(let binaryExpression): return render(binaryExpression, asLValue: asLValue, targetVariable: targetVariable)
+    case .bracketedExpression(let expression): return render(expression, targetVariable: targetVariable)
+    case .functionCall(let functionCall): return render(functionCall, targetVariable: targetVariable)
+    case .identifier(let identifier): return render(identifier, asLValue: asLValue, targetVariable: targetVariable)
+    case .variableDeclaration(let variableDeclaration): return render(variableDeclaration, targetVariable: targetVariable)
+    case .literal(let literal): return render(literalToken: literal, targetVariable: targetVariable)
+    case .self(let `self`): return render(selfToken: self, targetVariable: targetVariable)
+    case .subscriptExpression(let subscriptExpression): return render(subscriptExpression, asLValue: asLValue, targetVariable: targetVariable)
     }
   }
 
-  func render(_ binaryExpression: BinaryExpression, asLValue: Bool) -> String {
-    let lhs = render(binaryExpression.lhs, asLValue: asLValue)
-    let rhs = render(binaryExpression.rhs, asLValue: asLValue)
+  func render(_ binaryExpression: BinaryExpression, asLValue: Bool, targetVariable: String) -> String {
+    if case .equal = binaryExpression.opToken {
+      return renderAssignment(lhs: binaryExpression.lhs, rhs: binaryExpression.rhs, targetVariable: targetVariable)
+    }
+    if case .dot = binaryExpression.opToken {
+      return renderPropertyAccess(lhs: binaryExpression.lhs, rhs: binaryExpression.rhs, asLValue: asLValue, targetVariable: targetVariable)
+    }
+
+    let lhsVariable = variablePool.next()
+    let lhsComputation = render(binaryExpression.lhs, asLValue: asLValue, targetVariable: lhsVariable)
+
+    let rhsVariable = variablePool.next()
+    let rhsComputation = render(binaryExpression.rhs, asLValue: asLValue, targetVariable: rhsVariable)
+
+    let op: String
     
     switch binaryExpression.opToken {
-    case .equal: return renderAssignment(lhs: binaryExpression.lhs, rhs: binaryExpression.rhs)
-    case .plus: return "add(\(lhs), \(rhs))"
-    case .minus: return "sub(\(lhs), \(rhs))"
-    case .times: return "mul(\(lhs), \(rhs))"
-    case .divide: return "div(\(lhs), \(rhs))"
-    case .closeAngledBracket: return "lt(\(lhs), \(rhs))"
-    case .lessThanOrEqual: return "le(\(lhs), \(rhs))"
-    case .openAngledBracket: return "gt(\(lhs), \(rhs))"
-    case .greaterThanOrEqual: return "ge(\(lhs), \(rhs))"
-    case .dot: return renderPropertyAccess(lhs: binaryExpression.lhs, rhs: binaryExpression.rhs, asLValue: asLValue)
+    case .plus: op = "add"
+    case .minus: op = "sub"
+    case .times: op = "mul"
+    case .divide: op = "div"
+    case .closeAngledBracket: op = "lt"
+    case .lessThanOrEqual: op = "le"
+    case .openAngledBracket: op = "gt"
+    case .greaterThanOrEqual: op = "ge"
     default: fatalError()
     }
+
+    return """
+    \(lhsComputation)
+    \(rhsComputation)
+    let \(targetVariable) := \(op)(\(lhsVariable), \(rhsVariable))
+    """
   }
 
-  func renderAssignment(lhs: Expression, rhs: Expression) -> String {
-    let rhsCode = render(rhs)
+  func renderAssignment(lhs: Expression, rhs: Expression, targetVariable: String) -> String {
+    let rhsVariable = variablePool.next()
+    let rhsComputation = render(rhs, targetVariable: rhsVariable)
 
     switch lhs {
     case .variableDeclaration(let variableDeclaration):
-      return "let \(mangleIdentifierName(variableDeclaration.identifier.name)) := \(rhsCode)"
+      return """
+      \(rhsComputation)
+      let \(mangleIdentifierName(variableDeclaration.identifier.name)) := \(rhsVariable)
+      """
     case .identifier(let identifier) where !identifier.isPropertyAccess:
-      return "\(mangleIdentifierName(identifier.name)) := \(rhsCode)"
+      return """
+      \(rhsComputation)
+      \(mangleIdentifierName(identifier.name)) := \(rhsVariable)
+      """
     default:
-      let lhsCode = render(lhs, asLValue: true)
-      return "sstore(\(lhsCode), \(rhsCode))"
+      let lhsVariable = variablePool.next()
+      let lhsComputation = render(lhs, asLValue: true, targetVariable: lhsVariable)
+
+      let rhsVariable = variablePool.next()
+      let rhsComputation = render(rhs, targetVariable: rhsVariable)
+      return """
+      \(lhsComputation)
+      \(rhsComputation)
+      sstore(\(lhsVariable), \(rhsVariable))
+      """
     }
   }
 
-  func renderPropertyAccess(lhs: Expression, rhs: Expression, asLValue: Bool) -> String {
-    let rhsCode = render(rhs, asLValue: asLValue)
+  func renderPropertyAccess(lhs: Expression, rhs: Expression, asLValue: Bool, targetVariable: String) -> String {
+    let rhsCode = render(rhs, asLValue: asLValue, targetVariable: targetVariable)
 
     if case .self(_) = lhs {
       return rhsCode
     }
 
-    let lhsCode = render(lhs, asLValue: asLValue)
-    return "\(lhsCode).\(rhsCode)"
+    fatalError("Not supported yet.")
   }
 
-  func render(_ functionCall: FunctionCall) -> String {
+  func render(_ functionCall: FunctionCall, targetVariable: String) -> String {
     if let eventCall = environment.matchEventCall(functionCall, contractIdentifier: contractIdentifier) {
       let types = eventCall.type.genericArguments
 
       var stores = [String]()
       var memoryOffset = 0
       for (i, argument) in functionCall.arguments.enumerated() {
-        stores.append("mstore(\(memoryOffset), \(render(argument)))")
+        let argumentVariable = variablePool.next()
+        stores.append("""
+        \(render(argument, targetVariable: argumentVariable))
+        mstore(\(memoryOffset), \(argumentVariable))
+        """)
         memoryOffset += types[i].rawType.size * 32
       }
 
@@ -218,50 +255,65 @@ extension IULIAFunction {
       """
     }
 
-    let args: String = functionCall.arguments.map({ render($0) }).joined(separator: ", ")
-    return "\(functionCall.identifier.name)(\(args))"
+    let argumentPairs: [(computation: String, variable: String)] = functionCall.arguments.map({ argument in
+      let variable = variablePool.next()
+      return (render(argument, targetVariable: variable), variable)
+    })
+    let argumentComputations = argumentPairs.map { $0.computation }.joined(separator: "\n")
+    let argumentVariables = argumentPairs.map { $0.variable }.joined(separator: ", ")
+
+    return """
+    \(argumentComputations)
+    \(functionCall.identifier.name)(\(argumentVariables))
+    """
   }
 
-  func render(_ identifier: Identifier, asLValue: Bool = false) -> String {
+  func render(_ identifier: Identifier, asLValue: Bool = false, targetVariable: String) -> String {
     if identifier.isPropertyAccess {
       let offset = contractStorage.offset(for: identifier.name)
       if asLValue {
-        return "\(offset)"
+        return "let \(targetVariable) := \(offset)"
       }
-      return "sload(\(offset))"
+      return "let \(targetVariable) := sload(\(offset))"
     }
-    return mangleIdentifierName(identifier.name)
+    return "let \(targetVariable) := \(mangleIdentifierName(identifier.name))"
   }
 
-  func render(_ variableDeclaration: VariableDeclaration) -> String {
+  func render(_ variableDeclaration: VariableDeclaration, targetVariable: String) -> String {
     return "var \(variableDeclaration.identifier)"
   }
 
-  func render(literalToken: Token) -> String {
+  func render(literalToken: Token, targetVariable: String) -> String {
     guard case .literal(let literal) = literalToken.kind else {
       fatalError("Unexpected token \(literalToken.kind).")
     }
 
+    let value: String
+
     switch literal {
-    case .boolean(let boolean): return boolean == .false ? "0" : "1"
-    case .decimal(.real(let num1, let num2)): return "\(num1).\(num2)"
-    case .decimal(.integer(let num)): return "\(num)"
-    case .string(let string): return "\"\(string)\""
+    case .boolean(let boolean): value = boolean == .false ? "0" : "1"
+    case .decimal(.real(let num1, let num2)): value = "\(num1).\(num2)"
+    case .decimal(.integer(let num)): value = "\(num)"
+    case .string(let string): value = "\"\(string)\""
     }
+
+    return "let \(targetVariable) := \(value)"
   }
 
-  func render(selfToken: Token) -> String {
+  func render(selfToken: Token, targetVariable: String) -> String {
     guard case .self = selfToken.kind else {
       fatalError("Unexpected token \(selfToken.kind)")
     }
     return ""
   }
 
-  func render(_ subscriptExpression: SubscriptExpression, asLValue: Bool = false) -> String {
+  func render(_ subscriptExpression: SubscriptExpression, asLValue: Bool = false, targetVariable: String) -> String {
     let baseIdentifier = subscriptExpression.baseIdentifier
 
     let offset = contractStorage.offset(for: baseIdentifier.name)
-    let indexExpressionCode = render(subscriptExpression.indexExpressions[0])
+
+    let indexVariable = variablePool.next()
+    let indexExpressionCode = render(subscriptExpression.indexExpressions[0], targetVariable: indexVariable)
 
     let type = environment.type(of: subscriptExpression.baseIdentifier, contractIdentifier: contractIdentifier)!
 
@@ -271,46 +323,91 @@ extension IULIAFunction {
 
     switch type {
     case .arrayType(let elementType):
-      let storageArrayOffset = "\(IULIARuntimeFunction.storageArrayOffset.rawValue)(\(offset), \(indexExpressionCode))"
+      guard subscriptExpression.indexExpressions.count == 1 else {
+        fatalError("Nested arrays are not supported yet.")
+      }
+      let variable = variablePool.next()
+      let storageArrayOffset = """
+      \(indexExpressionCode)
+      let \(variable) := \(IULIARuntimeFunction.storageArrayOffset.rawValue)(\(offset), \(indexVariable))
+      """
       if asLValue {
-        return storageArrayOffset
+        return """
+        \(storageArrayOffset)
+        let \(targetVariable) := \(variable)
+        """
       } else {
         guard elementType.size == 1 else {
           fatalError("Loading array elements of size > 1 is not supported yet.")
         }
-        return "sload(\(storageArrayOffset))"
+        return """
+        \(storageArrayOffset)
+        let \(targetVariable) := sload(\(variable))
+        """
       }
     case .fixedSizeArrayType(let elementType, _):
-      let storageArrayOffset = "\(IULIARuntimeFunction.storageFixedSizeArrayOffset.rawValue)(\(offset), \(indexExpressionCode), \(type.size))"
+      let variable = variablePool.next()
+      let storageArrayOffset = """
+      \(indexExpressionCode)
+      let \(variable) := \(IULIARuntimeFunction.storageFixedSizeArrayOffset.rawValue)(\(offset), \(indexVariable), \(type.size))
+      """
       if asLValue {
-        return storageArrayOffset
+        return """
+        \(storageArrayOffset)
+        let \(targetVariable) := \(variable)
+        """
       } else {
         guard elementType.size == 1 else {
           fatalError("Loading array elements of size > 1 is not supported yet.")
         }
-        return "sload(\(storageArrayOffset))"
+        return """
+        \(storageArrayOffset)
+        let \(targetVariable) := sload(\(variable))
+        """
       }
     case .dictionaryType(key: let keyType, value: let valueType):
+      var storeOffset = 0
+
+      var memoryStores = ["mstore(\(storeOffset), \(offset))"]
+      storeOffset += 32
+
+      for indexExpression in subscriptExpression.indexExpressions {
+        let variable = variablePool.next()
+        memoryStores.append("""
+          \(render(indexExpression, targetVariable: variable))
+          mstore(\(storeOffset), \(variable))
+          """)
+        storeOffset += 32
+      }
+
       guard keyType.size == 1 else {
         fatalError("Dictionary keys of size > 1 are not supported yet.")
       }
 
-      let storageDictionaryOffsetForKey = "\(IULIARuntimeFunction.storageDictionaryOffsetForKey.rawValue)(\(offset), \(indexExpressionCode))"
+//      let storageDictionaryOffsetForKey = "\(IULIARuntimeFunction.storageDictionaryOffsetForKey.rawValue)(\(offset), \(indexExpressionCode))"
+      let offset = "sha3(0, \(storeOffset))"
 
       if asLValue {
-        return "\(storageDictionaryOffsetForKey)"
+        return """
+        \(memoryStores.joined(separator: "\n"))
+        let \(targetVariable) := \(offset)
+        """
       } else {
         guard valueType.size == 1 else {
           fatalError("Loading dictionary values of size > 1 is not supported yet.")
         }
-        return "sload(\(storageDictionaryOffsetForKey))"
+        return """
+        \(memoryStores.joined(separator: "\n"))
+        let \(targetVariable) := sload(\(offset))
+        """
       }
     default: fatalError()
     }
   }
 
   func render(_ ifStatement: IfStatement) -> String {
-    let condition = render(ifStatement.condition)
+    let conditionVariable = variablePool.next()
+    let condition = render(ifStatement.condition, targetVariable: conditionVariable)
     let body = ifStatement.body.map { statement in
       render(statement)
     }.joined(separator: "\n")
@@ -339,6 +436,26 @@ extension IULIAFunction {
       return ""
     }
 
-    return "\(IULIAFunction.returnVariableName) := \(render(expression))"
+    let variable = variablePool.next()
+    return """
+    \(render(expression, targetVariable: variable))
+    \(IULIAFunction.returnVariableName) := \(variable)
+    """
+  }
+}
+
+class MemoryPool {
+  private var currentIndex = 0
+  func next() -> Int {
+    defer { currentIndex += 1 }
+    return currentIndex
+  }
+}
+
+class VariablePool {
+  private var currentIndex = 0
+  func next() -> String {
+    defer { currentIndex += 1 }
+    return "_flintTmp\(currentIndex)"
   }
 }
