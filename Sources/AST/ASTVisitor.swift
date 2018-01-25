@@ -234,7 +234,9 @@ public struct ASTVisitor<Pass: ASTPass> {
 
     processResult.element.baseIdentifier = processResult.combining(visit(processResult.element.baseIdentifier, passContext: processResult.passContext))
 
-    processResult.element.indexExpression = processResult.combining(visit(processResult.element.indexExpression, passContext: processResult.passContext))
+    processResult.element.indexExpressions = processResult.element.indexExpressions.map { indexExpression in
+      processResult.combining(visit(indexExpression, passContext: processResult.passContext))
+    }
 
     let postProcessResult = pass.postProcess(subscriptExpression: processResult.element, passContext: processResult.passContext)
     return ASTPassResult(element: postProcessResult.element, diagnostics: processResult.diagnostics + postProcessResult.diagnostics, passContext: postProcessResult.passContext)

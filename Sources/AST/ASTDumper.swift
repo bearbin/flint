@@ -249,7 +249,10 @@ public class ASTDumper {
   func dump(_ subscriptExpression: SubscriptExpression) {
     writeNode("SubscriptExpression") {
       self.dump(subscriptExpression.baseIdentifier)
-      self.dump(subscriptExpression.indexExpression)
+
+      for indexExpression in subscriptExpression.indexExpressions {
+        self.dump(indexExpression)
+      }
       self.dump(subscriptExpression.closeSquareBracketToken)
     }
   }

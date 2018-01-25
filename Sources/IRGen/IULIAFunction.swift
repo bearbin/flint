@@ -261,7 +261,7 @@ extension IULIAFunction {
     let baseIdentifier = subscriptExpression.baseIdentifier
 
     let offset = contractStorage.offset(for: baseIdentifier.name)
-    let indexExpressionCode = render(subscriptExpression.indexExpression)
+    let indexExpressionCode = render(subscriptExpression.indexExpressions[0])
 
     let type = environment.type(of: subscriptExpression.baseIdentifier, contractIdentifier: contractIdentifier)!
 

@@ -30,4 +30,21 @@ contract Foo {
 // CHECK-AST:       built-in type Bool
 // CHECK-AST:       built-in type Address
   var didCompleteSomething: Event<Int, Bool, Address>
+
+
+// CHECK-AST: VariableDeclaration
+// CHECK-AST:   identifier "nestedDictionary"
+// CHECK-AST:     DictionaryType
+// CHECK-AST:       built-in type Int
+// CHECK-AST:       DictionaryType
+// CHECK-AST:         built-in type Address
+// CHECK-AST:         built-in type Int
+  var nestedDictionary: [Int: [Address: Int]]
+
+// CHECK-AST: VariableDeclaration
+// CHECK-AST:   identifier "nestedArray"
+// CHECK-AST:     ArrayType
+// CHECK-AST:       ArrayType
+// CHECK-AST:         built-in type Int
+  var nestedArray: [[Int]]
 }

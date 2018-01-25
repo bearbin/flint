@@ -141,14 +141,43 @@ extension Parser {
 
   func parseSubscriptExpression(scopeContext: ScopeContext) throws -> SubscriptExpression {
     let identifier = try parseIdentifier()
+
+    var indexExpressions = [Expression]()
+    var lastCloseSquareBracketToken: Token
+
+    let (indexExpression, closeSquareBracketToken) = try parseSubscriptIndex(scopeContext: scopeContext)
+    indexExpressions.append(indexExpression)
+    lastCloseSquareBracketToken = closeSquareBracketToken
+
+    let (compoundIndexExpressions, closeBracketToken) = parseSubscriptExpressionCompoundIndices(scopeContext: scopeContext)
+    indexExpressions.append(contentsOf: compoundIndexExpressions)
+    if let closeBracketToken = closeBracketToken {
+      lastCloseSquareBracketToken = closeBracketToken
+    }
+
+    return SubscriptExpression(baseIdentifier: identifier, indexExpressions: indexExpressions, closeSquareBracketToken: lastCloseSquareBracketToken)
+  }
+
+  func parseSubscriptExpressionCompoundIndices(scopeContext: ScopeContext) -> ([Expression], lastCloseSquareBracketToken: Token?) {
+    var indexExpressions = [Expression]()
+    var lastCloseSquareBracketToken: Token?
+
+    while let (indexExpression, closeSquareBracketToken) = attempt(try parseSubscriptIndex(scopeContext: scopeContext)) {
+      indexExpressions.append(indexExpression)
+      lastCloseSquareBracketToken = closeSquareBracketToken
+    }
+
+    return (indexExpressions, lastCloseSquareBracketToken)
+  }
+
+  func parseSubscriptIndex(scopeContext: ScopeContext) throws -> (Expression, lastCloseSquareBracketToken: Token) {
     try consume(.punctuation(.openSquareBracket))
     guard let index = indexOfFirstAtCurrentDepth([.punctuation(.closeSquareBracket)]) else {
-      throw ParserError.expectedToken(.punctuation(.closeSquareBracket), sourceLocation: identifier.sourceLocation)
+      throw ParserError.expectedToken(.punctuation(.closeSquareBracket), sourceLocation: currentToken?.sourceLocation)
     }
     let (indexExpression, _) = try parseExpression(upTo: index, scopeContext: scopeContext)
-    let closeSquareBracketToken = try consume(.punctuation(.closeSquareBracket))
-
-    return SubscriptExpression(baseIdentifier: identifier, indexExpression: indexExpression, closeSquareBracketToken: closeSquareBracketToken)
+    let closeBracketToken = try consume(.punctuation(.closeSquareBracket))
+    return (indexExpression, closeBracketToken)
   }
   
   func parseType() throws -> Type {

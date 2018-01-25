@@ -39,14 +39,18 @@ public struct TypeChecker: ASTPass {
     case .variableDeclaration(let variableDeclaration):
       return variableDeclaration.type.rawType
     case .subscriptExpression(let subscriptExpression):
-      let type = environment.type(of: subscriptExpression.baseIdentifier, contractIdentifier: functionDeclarationContext.contractContext.contractIdentifier)!
+      var type = environment.type(of: subscriptExpression.baseIdentifier, contractIdentifier: functionDeclarationContext.contractContext.contractIdentifier)!
 
-      switch type {
-      case .arrayType(let elementType): return elementType
-      case .fixedSizeArrayType(let elementType, _): return elementType
-      case .dictionaryType(_, let valueType): return valueType
-      default: fatalError()
+      for _ in subscriptExpression.indexExpressions {
+        switch type {
+          case .arrayType(let elementType): type = elementType
+          case .fixedSizeArrayType(let elementType, _): type = elementType
+          case .dictionaryType(_, let valueType): type = valueType
+          default: break
+        }
       }
+
+      return type
     }
   }
   

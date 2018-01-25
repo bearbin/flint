@@ -1,0 +1,15 @@
+contract Test {
+  var a: [Int : [Address: Int]]
+  var b: [[Int]]
+}
+
+Test :: (any) {
+  func foo(b: Address) -> Int {
+    return a[2][b]
+  }
+
+  func bar() -> Int {
+    return b[0][2]
+  }
+}
+
