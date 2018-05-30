@@ -44,7 +44,7 @@ FlightManager :: (admin) {
 
 FlightManager :: passenger <- (allocations.keys) {
   public func getSeatNumber() -> Int {
-    return allocations[passenger].seatNumber
+    return allocations[passenger].getNumber()
   }
 
   mutating public func cancelBooking() {
@@ -57,5 +57,17 @@ FlightManager :: (admin, allocations.keys) {
     let refund = Wei(&amountPaid[passenger])
     allocations[passenger] = nil
     send(passenger, &r)
+  }
+}
+
+struct Seat {
+  var number: Int
+
+  init(number: Int) {
+    self.number = number
+  }
+
+  func getNumber() -> Int {
+    return number
   }
 }
