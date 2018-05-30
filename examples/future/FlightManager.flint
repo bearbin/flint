@@ -28,7 +28,11 @@ FlightManager :: caller <- (any) {
 }
 
 FlightManager :: (admin) {
-  mutating public func cancelFlight() {}
+  mutating public func cancelFlight() {
+    for (passenger: allocations.keys) {
+      refund(passenger)
+    }
+  }
 
   mutating public func setTicketPrice(ticketPrice: Int) {
     self.ticketPrice = ticketPrice
