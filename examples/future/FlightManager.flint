@@ -22,6 +22,9 @@ FlightManager :: caller <- (any) {
     assert(value.getRawValue() == ticketPrice)
     let seat = allocateSeat()
     allocations[caller] = seat
+
+    // Record the received Ether in the contract's state.
+    amountPaid[caller].transfer(&value)
   }
 
   mutating func allocateSeat() -> Seat {}
@@ -51,7 +54,7 @@ FlightManager :: passenger <- (allocations.keys) {
 
 FlightManager :: (admin, allocations.keys) {
   mutating func refund(passenger: Address) {
-    let r = Wei(&totalFunds, ticketPrice)
+    let refund = Wei(&amountPaid[passenger])
     allocations[passenger] = nil
     send(passenger, &r)
   }
