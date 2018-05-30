@@ -1,0 +1,54 @@
+// Proof-of-concept for a Flint program flight seat reservations.
+// Does not compile yet as features such as for loops are not supported yet.
+
+contract FlightManager {
+  let flightID: String
+  let admin: Address
+  var ticketPrice: Int
+  
+  var allocations: [Address: Seat] = [:]
+  var amountPaid: [Address: Wei] = [:]
+}
+
+FlightManager :: caller <- (any) {
+  public init(flightID: String, admin: Address, ticketPrice: Int) {
+    self.flightID = flightID
+    self.admin = admin
+    self.ticketPrice = ticketPrice
+  }
+
+  @payable
+  mutating public func buy(implicit value: Wei) {
+    assert(value.getRawValue() == ticketPrice)
+    let seat = allocateSeat()
+    allocations[caller] = seat
+  }
+
+  mutating func allocateSeat() -> Seat {}
+}
+
+FlightManager :: (admin) {
+  mutating public func cancelFlight() {}
+
+  mutating public func setTicketPrice(ticketPrice: Int) {
+    self.ticketPrice = ticketPrice
+  }
+}
+
+FlightManager :: passenger <- (allocations.keys) {
+  public func getSeatNumber() -> Int {
+    return allocations[passenger].seatNumber
+  }
+
+  mutating public func cancelBooking() {
+    refund(passenger)
+  }
+}
+
+FlightManager :: (admin, allocations.keys) {
+  mutating func refund(passenger: Address) {
+    let r = Wei(&totalFunds, ticketPrice)
+    allocations[passenger] = nil
+    send(passenger, &r)
+  }
+}
