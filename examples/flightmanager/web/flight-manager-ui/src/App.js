@@ -102,7 +102,8 @@ class App extends Component {
 
     const flightID = await this.contract.methods.getFlightID().call()
     const numRemainingSeats = await this.contract.methods.getNumRemainingSeats().call().valueOf()
-    const isOpen = await this.contract.methods.isFlightCancelled().call().valueOf() !== 0
+    const isOpen = await this.contract.methods.isFlightCancelled().call().valueOf() == 0
+    console.log(await this.contract.methods.isFlightCancelled().call().valueOf())
     const ticketPrice = await this.contract.methods.getTicketPrice().call().valueOf()
 
     this.setState({
