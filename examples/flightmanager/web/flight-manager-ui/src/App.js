@@ -10,7 +10,8 @@ class App extends Component {
     super(props)
     
     this.state = {
-      address: '0x87241310eb87e470ea24b2b581d7e9e5d1080838',
+      //address: '0x87241310eb87e470ea24b2b581d7e9e5d1080838',
+      address: null,
       flightID: null,
       numRemainingSeats: null,
     };
@@ -92,6 +93,10 @@ class App extends Component {
   }
 
   async loadFlightInfo() {
+    if (!this.state.address) {
+      return
+    }
+
     this.contract = new this.web3.eth.Contract(abi);
     this.contract.options.address = this.state.address;
 
