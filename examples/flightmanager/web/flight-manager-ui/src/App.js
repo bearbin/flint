@@ -8,10 +8,12 @@ class App extends Component {
 
   constructor(props) {
     super(props)
+
+    const contract = this.props.match.params.contract || ""
     
     this.state = {
       //address: '0x87241310eb87e470ea24b2b581d7e9e5d1080838',
-      address: null,
+      address: contract.startsWith("0x") ? contract : null,
       flightID: null,
       numRemainingSeats: null,
     };
@@ -89,6 +91,7 @@ class App extends Component {
 
   onAddressSubmit(e) {
     e.preventDefault();
+    window.location = this.state.address;
     this.loadFlightInfo();
   }
 
