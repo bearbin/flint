@@ -52,7 +52,7 @@ class App extends Component {
         }
         { this.state.tx && 
           <div>
-            <a href={"https://ropsten.etherscan.io/tx/" + this.state.tx}> {"Ethereum transaction: " + this.state.tx} </a>
+            <a href={"https://kovan.etherscan.io/tx/" + this.state.tx}> {"Ethereum transaction: " + this.state.tx} </a>
           </div>
         }
       </div>

@@ -9,6 +9,7 @@ var privateKey = new Buffer(config.airlinePrivateKey, "hex")
 var wallet = Wallet.fromPrivateKey(privateKey);
 
 var ropstenProvider = new WalletProvider(wallet, "https://ropsten.infura.io/");
+var kovanProvider = new WalletProvider(wallet, "https://kovan.infura.io/");
 
 module.exports = {
   networks: {
@@ -17,6 +18,12 @@ module.exports = {
       gas: 4600000,
       gasPrice: web3.utils.toWei("25", "gwei"),
       network_id: "3",
-    }
+    },
+    kovan: {
+      provider: kovanProvider,
+      gas: 4600000,
+      gasPrice: web3.utils.toWei("25", "gwei"),
+      network_id: "2",
+    },
   }
 };
