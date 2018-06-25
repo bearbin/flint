@@ -59,7 +59,7 @@ FlightManager :: (admin) {
 }
 
 FlightManager :: passenger <- (passengers) {
-  mutating public func retrieveRefund() {
+  public func retrieveRefund() {
     assert(flightInformation.isCancelled)
     send(passenger, &amountPaid[passenger])
   }
