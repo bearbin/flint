@@ -12,7 +12,10 @@ contract FlightManager {
 }
 
 FlightManager :: caller <- (any) {
-  public init(flightID: String, admin: Address, ticketPrice: Int, numSeats: Int) {
+  public init(flightID: String, 
+              admin: Address, 
+              ticketPrice: Int, 
+              numSeats: Int) {
     self.flightInformation = FlightInformation(flightID)
     self.admin = admin
     self.ticketPrice = ticketPrice
