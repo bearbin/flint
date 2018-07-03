@@ -17,13 +17,13 @@ public struct Tokenizer {
   var sourceCode: String
 
   var isFromStdlib: Bool
-  
+
   public init(sourceFile: URL, isFromStdlib: Bool = false) {
     self.sourceFile = sourceFile
     self.sourceCode = try! String(contentsOf: sourceFile)
     self.isFromStdlib = isFromStdlib
   }
-  
+
   /// Converts the source code into a list of tokens.
   public func tokenize() -> [Token] {
     return tokenize(string: sourceCode)
@@ -37,7 +37,7 @@ public struct Tokenizer {
 
     for (component, sourceLocation) in components {
       // Skip whitespace.
-      if component == " " {
+      if component == " " || component == "\t" {
         continue
       } else if let token = syntaxMap[component] {
         // The token is punctuation or a keyword.
@@ -146,7 +146,7 @@ public struct Tokenizer {
         if CharacterSet.newlines.contains(char.unicodeScalars.first!) {
           inComment = false
           components.append(("\n", sourceLocation(line: line, column: column, length: 1)))
-          
+
           line += 1
           column = 1
         }
