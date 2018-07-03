@@ -1,0 +1,60 @@
+contract Purchase {
+  let seller: Address
+  var buyer: Address
+  let value: Int
+  var buyerValue: Wei = Wei(0)
+  var sellerValue: Wei = Wei(0)
+  var state: Int = 1
+
+  let aborted: Event<Int> // TODO: Make these void.
+  let purchaseConfirmed: Event<Int>
+  let itemReceived: Event<Int>
+}
+
+Purchase :: caller <- (any) {
+	public init(doubleValue: Int) {
+		// Only even values are allowed.
+		self.value = doubleValue / 2
+		assert((value * 2) == doubleValue)
+		self.seller = caller
+		self.buyer = caller // TODO: Fix this!
+	}
+
+	@payable
+	public mutating func confirmPurchase(implicit value: Wei) {
+		assert(state == 1)
+		assert((self.value * 2) == value.getRawValue())
+		purchaseConfirmed(0)
+
+		self.buyer = caller
+
+		buyerValue.transfer(&value, self.value)
+		sellerValue.transfer(&value, self.value)
+		state = 2 // Locked
+	}
+
+}
+
+Purchase :: (seller) {
+	// Abort, and return gas money. TODO: Implement this!
+	public mutating func abort() {
+		assert(state == 1)
+
+		aborted(0)
+
+		//seller.transfer(&this)
+		state = 3 // Completed / inactive
+	}
+}
+
+Purchase :: (buyer) {
+	public mutating func confirmReceived() {
+		assert(state == 2)
+
+		itemReceived(0)
+
+		send(buyer, &buyerValue);
+		send(seller, &sellerValue);
+		state = 3 // Completed / inactive
+	}
+}
