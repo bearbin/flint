@@ -16,7 +16,7 @@ Ballot :: caller <- (any) {
     chairperson = caller
     voters[chairperson] = Voter(weight: 1)
 
-    for proposalName in proposalNames {
+    for proposalName: String in proposalNames {
       proposals.append(Proposal(name: proposalName))
     }
   }
