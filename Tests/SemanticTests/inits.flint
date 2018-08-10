@@ -27,6 +27,8 @@ Test :: caller <- (any) {
     f = 0
     g = false
     x = B(0, false)
+    e = e // expected-error {{Cannot use state property 'e' within initializer declaration}}
+    x = B(0, e) // expected-error {{Cannot use state property 'e' within initializer declaration}}
   }
 
   init() {
@@ -38,7 +40,7 @@ Test :: caller <- (any) {
   }
 
   mutating func foo() {
-    x = B(1, true) 
+    x = B(1, true)
     x = C(1) // expected-error {{Incompatible assignment between values of type 'B' and 'C'}}
   }
 }

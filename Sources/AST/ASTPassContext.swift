@@ -55,6 +55,12 @@ extension ASTPassContext {
     set { self[AsLValueContextEntry.self] = newValue }
   }
 
+  // Whether the node currently being visited is on the left hand side of an assignment.
+  public var inAssignmentLhs: Bool? {
+    get { return self[InAssignmentLhsContextEntry.self] }
+    set { self[InAssignmentLhsContextEntry.self] = newValue }
+  }
+
   /// Contextual information used when visiting the state properties declared in a contract declaration.
   public var contractStateDeclarationContext: ContractStateDeclarationContext? {
     get { return self[ContractStateDeclarationContextEntry.self] }
@@ -135,6 +141,10 @@ private struct EnvironmentContextEntry: PassContextEntry {
 }
 
 private struct AsLValueContextEntry: PassContextEntry {
+  typealias Value = Bool
+}
+
+private struct InAssignmentLhsContextEntry: PassContextEntry {
   typealias Value = Bool
 }
 

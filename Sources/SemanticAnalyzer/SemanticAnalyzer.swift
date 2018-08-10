@@ -265,6 +265,8 @@ public struct SemanticAnalyzer: ASTPass {
       // The identifier is used an l-value (the left-hand side of an assignment).
       let asLValue = passContext.asLValue ?? false
 
+      let inAssignmentLhs = passContext.inAssignmentLhs ?? false
+
       if identifier.enclosingType == nil {
         // The identifier has no explicit enclosing type, such as in the expression `foo` instead of `a.foo`.
 
@@ -282,14 +284,11 @@ public struct SemanticAnalyzer: ASTPass {
       }
 
       if let enclosingType = identifier.enclosingType {
-        // The identifier has an explicit enclosing type, such as `a` in the expression `a.foo`.
-
         if !passContext.environment!.isPropertyDefined(identifier.name, enclosingType: enclosingType) {
           // The property is not defined in the enclosing type.
           diagnostics.append(.useOfUndeclaredIdentifier(identifier))
           passContext.environment!.addUsedUndefinedVariable(identifier, enclosingType: enclosingType)
         } else if asLValue {
-
           if passContext.environment!.isPropertyConstant(identifier.name, enclosingType: enclosingType) {
             // Retrieve the source location of that property's declaration.
             let declarationSourceLocation = passContext.environment!.propertyDeclarationSourceLocation(identifier.name, enclosingType: enclosingType)!
@@ -318,6 +317,10 @@ public struct SemanticAnalyzer: ASTPass {
             // Record the mutating expression in the context.
             addMutatingExpression(.identifier(identifier), passContext: &passContext)
           }
+        } else if !inAssignmentLhs,
+          let _ = passContext.initializerDeclarationContext,
+          identifier.enclosingType == passContext.enclosingTypeIdentifier!.name {
+          diagnostics.append(.statePropertyUsedWithinInitializerDeclaration(identifier))
         }
       }
     }
