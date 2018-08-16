@@ -1,0 +1,69 @@
+// Missing features: sha call
+// TODO: should events be called before or after changes?
+
+contract ENS {
+	var records: [Int: Record] = [:]
+
+	let NewOwner: Event<Int, Int, Address>
+	let Transfer: Event<Int, Address>
+	let NewResolver: Event<Int, Address>
+	let NewTTL: Event<Int, Int>
+}
+
+ENS :: caller <- (any) {
+	public init(owner: Address) {
+		records[0] = Record(owner)
+	}
+
+	public func owner(node: Int) -> Address {
+		return records[node].owner
+	}
+
+	public func resolver(node: Int) -> Address {
+		return records[node].resolver
+	}
+
+	public func ttl(node: Int) -> Int {
+		return records[node].ttl
+	}
+
+	func isOwner(node: Int, candidate: Address) -> Bool {
+		return records[node].owner == candidate
+	}
+
+	public mutating func setOwner(node: Int, owner: Address) {
+		assert(isOwner(node, caller))
+		Transfer(node, owner)
+		records[node].owner = owner
+	}
+
+	// TODO: add mutating
+	public func setSubnodeOwner(node: Int, label: Int, owner: Address) {
+		assert(isOwner(node, caller))
+		//var subnode = sha3(node, label)
+		NewOwner(node, label, owner)
+		//records[subnode] = Record(owner)
+	}
+
+	public mutating func setResolver(node: Int, resolver: Address) {
+		assert(isOwner(node, caller))
+		NewResolver(node, resolver)
+		records[node].resolver = resolver
+	}
+
+	public mutating func setTTL(node: Int, ttl: Int) {
+		assert(isOwner(node, caller))
+		NewTTL(node, ttl)
+		records[node].ttl = ttl
+	}
+}
+
+struct Record {
+	var owner: Address
+	var resolver: Address = 0x0000000000000000000000000000000000000000
+	var ttl: Int = 0
+
+	init(owner: Address) {
+		self.owner = owner
+	}
+}

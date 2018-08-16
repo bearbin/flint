@@ -1,0 +1,78 @@
+// ABI interface needs large returns, long strings.
+
+contract Resolver {
+	var records: [Int: Record] = [:]
+	let owner: Address
+
+	let AddrChanged: Event<Int, Address>
+	let NameChanged: Event<Int, String>
+	let PubkeyChanged: Event<Int, Int, Int>
+}
+
+Resolver :: caller <- (any) {
+	public init() {
+		owner = caller
+	}
+
+	public func supportsInterface(interfaceID: Int) -> Bool {
+		// 33540519 == 0x01ffc9a7   (supportsInterface interface)
+		// 993744862 == 0x3b3b57de  (addr interface)
+		// 1763652657 == 0x691f3431 (name interface)
+		// 570665814 == 0x2203ab56  (ABI interface)
+		// 3362325043 == 0xc8690233 (pubkey interface)
+		var supported: Bool = false
+		if (interfaceID == 33540519) || (interfaceID == 993744862)
+		  || (interfaceID == 1763652657)
+		  || (interfaceID == 3362325043) {
+		  supported = true
+		}
+		return supported
+	}
+
+	public func addr(node: Int) -> Address {
+		return records[node].address
+	}
+
+	public func name(node: Int) -> String {
+		return records[node].name
+	}
+
+	public func pubkey(node: Int) -> Pubkey {
+		return records[node].pubkey
+	}
+}
+
+Resolver :: (owner) {
+	public mutating func changeAddress(node: Int, address: Address) {
+		records[node].address = address
+		AddrChanged(node, address)
+	}
+
+	public mutating func changeName(node: Int, name: String) {
+		records[node].name = name
+		NameChanged(node, name)
+	}
+
+	public mutating func changePubkey(node: Int, x: Int, y: Int) {
+		records[node].pubkey.x = x
+		records[node].pubkey.y = y
+		PubkeyChanged(node, x, y)
+	}
+}
+
+struct Record {
+	var address: Address = 0x0000000000000000000000000000000000000000
+	var name: String = " "
+	// abi: ...
+	var pubkey: Pubkey = Pubkey(0)
+}
+
+struct Pubkey {
+	var x: Int
+	var y: Int
+
+	init(x: Int, y: Int) {
+		self.x = x
+		self.y = y
+	}
+}
