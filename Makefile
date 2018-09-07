@@ -1,5 +1,5 @@
-all: 
-	swift build	
+all:
+	swift build
 	cp -r stdlib .build/debug/
 
 release:
@@ -13,4 +13,4 @@ zip: release
 
 test: release
 	cd Tests/BehaviorTests && ./compile_behavior_tests.sh
-	swift run -c release lite 
+	swift run -c release lite
